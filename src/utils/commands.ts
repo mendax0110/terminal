@@ -5,11 +5,45 @@ import { theme } from "../stores/theme";
 import { todoManager } from "./todo";
 
 const hostname = window.location.hostname;
+const githubUsername = 'mendax0110';
+const githubApiBase = 'https://api.github.com';
+
+interface GithubUser {
+  login: string;
+  html_url: string;
+  public_repos: number;
+  followers: number;
+  following: number;
+  created_at: string;
+  bio: string | null;
+  avatar_url: string;
+}
+
+interface GithubRepo {
+  name: string;
+  html_url: string;
+  description: string | null;
+  language: string | null;
+  stargazers_count: number;
+  forks_count: number;
+  updated_at: string;
+}
+
+const fetchGithubJson = async <T>(url: string): Promise<T> => {
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`GitHub API error: ${response.status}`);
+  }
+
+  return response.json() as Promise<T>;
+};
 
 export const commands: Record<string, (args: string[]) => Promise<string> | string> = {
   help: () => {
     const categories = {
       System: ["help", "clear", "date", "exit"],
+      Profile: ["github"],
       Productivity: ["todo", "weather"],
       Customization: ["theme", "banner"],
       Network: ["curl", "hostname", "whoami"],
@@ -216,6 +250,90 @@ Examples:
 
       default:
         return `Unknown todo command: ${subCommand}\n\n${usage}`;
+    }
+  },
+  github: async (args: string[]) => {
+    const usage = `Usage: github [command]
+
+Commands:
+  profile   Show GitHub profile summary
+  repos     Show top repositories
+  langs     Show top languages
+
+Examples:
+  github profile
+  github repos
+  github langs`;
+
+    const command = args[0] ?? "profile";
+
+    try {
+      const user = await fetchGithubJson<GithubUser>(
+        `${githubApiBase}/users/${githubUsername}`
+      );
+      const repos = await fetchGithubJson<GithubRepo[]>(
+        `${githubApiBase}/users/${githubUsername}/repos?per_page=100&sort=updated`
+      );
+
+      const languageCounts = repos.reduce<Record<string, number>>(
+        (acc, repo) => {
+          if (repo.language) {
+            acc[repo.language] = (acc[repo.language] ?? 0) + 1;
+          }
+          return acc;
+        },
+        {}
+      );
+
+      const topLanguages = Object.entries(languageCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([language, count]) => `${language} (${count})`)
+        .join(", ") || "N/A";
+
+      const topRepos = [...repos]
+        .sort((a, b) => b.stargazers_count - a.stargazers_count)
+        .slice(0, 8)
+        .map(
+          (repo) =>
+            `${repo.name} (${repo.stargazers_count}★, ${repo.forks_count} forks)`
+        )
+        .join("\n  ") || "N/A";
+
+      const recentRepos = [...repos]
+        .sort(
+          (a, b) =>
+            new Date(b.updated_at).getTime() -
+            new Date(a.updated_at).getTime()
+        )
+        .slice(0, 8)
+        .map(
+          (repo) =>
+            `${repo.name} (${new Date(repo.updated_at).toLocaleDateString()})`
+        )
+        .join("\n  ") || "N/A";
+
+      if (command === "profile") {
+        return `GitHub: ${user.html_url}
+User: ${user.login}
+Public repos: ${user.public_repos}
+Followers: ${user.followers}
+Following: ${user.following}
+Bio: ${user.bio ?? "N/A"}
+Top languages: ${topLanguages}`;
+      }
+
+      if (command === "repos") {
+        return `Top starred repos:\n  ${topRepos}\n\nRecently updated:\n  ${recentRepos}`;
+      }
+
+      if (command === "langs") {
+        return `Top languages: ${topLanguages}`;
+      }
+
+      return usage;
+    } catch (error) {
+      return `GitHub lookup failed. Try again later.`;
     }
   },
 };

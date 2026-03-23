@@ -14,13 +14,37 @@
     input.focus();
 
     if ($history.length === 0) {
-      const command = commands['banner'] as () => string;
+      const bannerCommand = commands['banner'] as () => string;
 
-      if (command) {
-        const output = command();
+      if (bannerCommand) {
+        const output = bannerCommand();
 
         $history = [...$history, { command: 'banner', outputs: [output] }];
       }
+
+      const loadGithub = async () => {
+        const githubCommand = commands['github'] as (
+          args: string[]
+        ) => Promise<string> | string;
+
+        if (!githubCommand) {
+          return;
+        }
+
+        const profileOutput = await githubCommand(['profile']);
+        $history = [
+          ...$history,
+          { command: 'github profile', outputs: [profileOutput] },
+        ];
+
+        const reposOutput = await githubCommand(['repos']);
+        $history = [
+          ...$history,
+          { command: 'github repos', outputs: [reposOutput] },
+        ];
+      };
+
+      void loadGithub();
     }
   });
 
