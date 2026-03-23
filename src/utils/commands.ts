@@ -7,6 +7,7 @@ import { todoManager } from "./todo";
 const hostname = window.location.hostname;
 const githubUsername = 'mendax0110';
 const githubApiBase = 'https://api.github.com';
+const linkedinUrl = 'https://www.linkedin.com/in/adrian-g%C3%B6ssl-480a7b202/';
 
 interface GithubUser {
   login: string;
@@ -29,6 +30,18 @@ interface GithubRepo {
   updated_at: string;
 }
 
+interface GithubEvent {
+  type: string;
+  repo: {
+    name: string;
+  };
+  created_at: string;
+  payload: {
+    ref?: string | null;
+    commits?: Array<{ message: string }>;
+  };
+}
+
 const fetchGithubJson = async <T>(url: string): Promise<T> => {
   const response = await fetch(url);
 
@@ -43,11 +56,11 @@ export const commands: Record<string, (args: string[]) => Promise<string> | stri
   help: () => {
     const categories = {
       System: ["help", "clear", "date", "exit"],
-      Profile: ["github"],
+      Profile: ["start", "github", "contributions"],
       Productivity: ["todo", "weather"],
       Customization: ["theme", "banner"],
       Network: ["curl", "hostname", "whoami"],
-      Contact: ["email", "repo", "donate"],
+      Contact: ["email", "repo", "linkedin", "donate"],
       Fun: ["echo", "sudo", "vi", "vim", "emacs"],
     };
 
@@ -137,6 +150,11 @@ export const commands: Record<string, (args: string[]) => Promise<string> | stri
   },
   donate: () => {
     window.open(packageJson.funding.url, "_blank");
+  linkedin: () => {
+    window.open(linkedinUrl, "_blank");
+
+    return "Opening LinkedIn profile...";
+  },
 
     return "Opening donation url...";
   },
@@ -171,15 +189,24 @@ export const commands: Record<string, (args: string[]) => Promise<string> | stri
     }
   },
   banner: () => `
-███╗   ███╗██╗  ██╗████████╗████████╗███████╗██████╗
-████╗ ████║██║  ██║╚══██╔══╝╚══██╔══╝╚════██║╚════██╗
-██╔████╔██║███████║   ██║      ██║       ██╔╝ █████╔╝
-██║╚██╔╝██║╚════██║   ██║      ██║      ██╔╝ ██╔═══╝
-██║ ╚═╝ ██║     ██║   ██║      ██║      ██║  ███████╗
-╚═╝     ╚═╝     ╚═╝   ╚═╝      ╚═╝      ╚═╝  ╚══════╝ v${packageJson.version}
+███╗   ███╗███████╗███╗   ██╗██████╗  █████╗ ██╗  ██╗
+████╗ ████║██╔════╝████╗  ██║██╔══██╗██╔══██╗╚██╗██╔╝
+██╔████╔██║█████╗  ██╔██╗ ██║██║  ██║███████║ ╚███╔╝
+██║╚██╔╝██║██╔══╝  ██║╚██╗██║██║  ██║██╔══██║ ██╔██╗
+██║ ╚═╝ ██║███████╗██║ ╚████║██████╔╝██║  ██║██╔╝ ██╗
+╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝ v${packageJson.version}
+
+MENDAX0110
 
 Type 'help' to see list of available commands.
 `,
+  start: () => `Name: mendax
+Role: Embedded Software Engineer
+Focus: C++, C, C#, Python
+Learning: hackthebox, malware analysis, reverse engineering, cyber security
+Collab: radio telescope project
+Interests: electronics, IoT, AI, microcontrollers, embedded systems
+Contact: ${linkedinUrl}`,
   todo: (args: string[]) => {
     const usage = `Usage: todo [command] [args]
 
@@ -334,6 +361,29 @@ Top languages: ${topLanguages}`;
       return usage;
     } catch (error) {
       return `GitHub lookup failed. Try again later.`;
+    }
+  },
+  contributions: async () => {
+    try {
+      const events = await fetchGithubJson<GithubEvent[]>(
+        `${githubApiBase}/users/${githubUsername}/events/public?per_page=30`
+      );
+
+      if (events.length === 0) {
+        return "No public activity found.";
+      }
+
+      const summaries = events.slice(0, 10).map((event) => {
+        const date = new Date(event.created_at).toLocaleDateString();
+        const commitMessage = event.payload.commits?.[0]?.message;
+        const detail = commitMessage ? ` - ${commitMessage}` : "";
+
+        return `${date} ${event.type} ${event.repo.name}${detail}`;
+      });
+
+      return `Recent public activity:\n  ${summaries.join("\n  ")}`;
+    } catch (error) {
+      return "GitHub activity lookup failed. Try again later.";
     }
   },
 };

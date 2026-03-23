@@ -44,7 +44,17 @@
         ];
       };
 
-      void loadGithub();
+      if (import.meta.env.MODE === 'production') {
+        const startCommand = commands['start'] as () => string;
+
+        if (startCommand) {
+          const output = startCommand();
+
+          $history = [...$history, { command: 'start', outputs: [output] }];
+        }
+
+        void loadGithub();
+      }
     }
   });
 
