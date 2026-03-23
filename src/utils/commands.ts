@@ -150,13 +150,12 @@ export const commands: Record<string, (args: string[]) => Promise<string> | stri
   },
   donate: () => {
     window.open(packageJson.funding.url, "_blank");
+    return "Opening donation url...";
+  },
   linkedin: () => {
     window.open(linkedinUrl, "_blank");
 
     return "Opening LinkedIn profile...";
-  },
-
-    return "Opening donation url...";
   },
   weather: async (args: string[]) => {
     const city = args.join("+");
