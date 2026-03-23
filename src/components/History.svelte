@@ -2,6 +2,12 @@
   import { history } from '../stores/history';
   import { theme } from '../stores/theme';
   import Ps1 from './Ps1.svelte';
+
+  const linkify = (text: string) =>
+    text.replace(
+      /(https?:\/\/[^\s]+)/g,
+      '<a href="$1" target="_blank" rel="noreferrer" class="underline">$1</a>'
+    );
 </script>
 
 {#each $history as { command, outputs }}
@@ -18,7 +24,7 @@
 
     {#each outputs as output}
       <p class="whitespace-pre">
-        {output}
+        {@html linkify(output)}
       </p>
     {/each}
   </div>
